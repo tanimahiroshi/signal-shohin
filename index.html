@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ビジネスシグナル | 商品</title>
+  <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Kaku Gothic ProN', 'メイリオ', sans-serif;
+      background: #f5f7fa; color: #2c3e50; min-height: 100vh;
+    }
+
+    /* DROP ZONE */
+    #drop-zone {
+      display: none; flex-direction: column; align-items: center; justify-content: center;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #0e9f6e 0%, #057a55 100%);
+      color: white; text-align: center; padding: 40px; transition: background 0.2s;
+    }
+    #drop-zone.drag-over { outline: 3px dashed rgba(255,255,255,0.5); outline-offset: -20px; }
+    .drop-icon { font-size: 64px; margin-bottom: 20px; }
+    .drop-title { font-size: 26px; font-weight: 700; margin-bottom: 10px; }
+    .drop-sub { font-size: 15px; opacity: 0.8; margin-bottom: 32px; line-height: 1.7; }
+    .drop-btn {
+      background: white; color: #0e9f6e; border: none;
+      padding: 13px 32px; border-radius: 8px; font-size: 15px; font-weight: 600;
+      cursor: pointer; margin-bottom: 16px; transition: all 0.15s;
+    }
+    .drop-btn:hover { background: #ecfdf5; transform: translateY(-1px); }
+    .back-btn {
+      background: transparent; border: 1.5px solid rgba(255,255,255,0.4);
+      color: white; padding: 8px 20px; border-radius: 8px; font-size: 13px;
+      cursor: pointer; margin-bottom: 32px;
+    }
+    .drop-hint { background: rgba(255,255,255,0.12); border-radius: 12px; padding: 18px 28px; max-width: 520px; text-align: left; }
+    .drop-hint-title { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; opacity: 0.75; margin-bottom: 12px; text-transform: uppercase; }
+    .tag-list { display: flex; flex-wrap: wrap; gap: 7px; }
+    .col-tag { background: rgba(255,255,255,0.18); border-radius: 20px; padding: 4px 12px; font-size: 12px; }
+    .col-tag.req { background: rgba(255,255,255,0.38); font-weight: 600; }
+    #file-input { display: none; }
+
+    /* HEADER */
+    #dashboard { display: block; }
+    .header {
+      background: #0e9f6e; color: white;
+      padding: 0 24px; height: 54px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    }
+    .header-left { display: flex; align-items: center; gap: 9px; }
+    .header-icon { font-size: 19px; }
+    .header-title { font-size: 16px; font-weight: 700; }
+    .header-right { display: flex; align-items: center; gap: 10px; }
+    .demo-badge {
+      background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.35);
+      color: white; font-size: 11px; font-weight: 600;
+      padding: 3px 10px; border-radius: 20px; letter-spacing: 0.05em;
+    }
+    .toggle-group { display: flex; background: rgba(255,255,255,0.14); border-radius: 8px; padding: 3px; gap: 2px; }
+    .tog-btn {
+      background: transparent; border: none; color: rgba(255,255,255,0.8);
+      padding: 5px 14px; border-radius: 6px; font-size: 13px; font-weight: 500;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .tog-btn.active { background: white; color: #0e9f6e; font-weight: 700; }
+    .risk-btn {
+      background: rgba(255,255,255,0.14); border: none; color: white;
+      padding: 5px 13px; border-radius: 6px; font-size: 13px;
+      cursor: pointer; display: flex; align-items: center; gap: 5px; transition: all 0.15s;
+    }
+    .risk-btn.active { background: rgba(239,68,68,0.75); }
+    .updated { font-size: 10px; opacity: 0.65; text-align: right; line-height: 1.5; }
+
+    /* MAIN */
+    .main { padding: 18px 24px; max-width: 1440px; margin: 0 auto; }
+    .search-wrap { margin-bottom: 14px; }
+    .search-input {
+      background: white; border: 1.5px solid #e5e7eb; border-radius: 8px;
+      padding: 9px 14px; font-size: 14px; width: 280px; outline: none; transition: border-color 0.15s;
+    }
+    .search-input:focus { border-color: #0e9f6e; }
+
+    /* SUMMARY */
+    .summary-row { display: grid; grid-template-columns: 1.2fr 1fr 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+    .sum-card {
+      background: white; border-radius: 10px; padding: 15px 18px;
+      border: 1.5px solid #e5e7eb; cursor: pointer; transition: all 0.15s;
+    }
+    .sum-card:hover { box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+    .sum-card.active { border-color: #0e9f6e; box-shadow: 0 2px 12px rgba(14,159,110,0.15); }
+    .sum-card.s-total  { border-left: 4px solid #0e9f6e; }
+    .sum-card.s-danger { border-left: 4px solid #ef4444; }
+    .sum-card.s-warn   { border-left: 4px solid #f59e0b; }
+    .sum-card.s-good   { border-left: 4px solid #10b981; }
+    .sum-label { font-size: 12px; color: #6b7280; margin-bottom: 6px; display: flex; align-items: center; gap: 5px; }
+    .sum-num { font-size: 32px; font-weight: 700; line-height: 1; }
+    .sum-num.c-total  { color: #0e9f6e; }
+    .sum-num.c-danger { color: #ef4444; }
+    .sum-num.c-warn   { color: #f59e0b; }
+    .sum-num.c-good   { color: #10b981; }
+    .sum-unit { font-size: 13px; font-weight: 400; color: #9ca3af; margin-left: 3px; }
+
+    /* SECTION */
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .section-title { font-size: 14px; font-weight: 600; color: #374151; }
+    .legend { display: flex; gap: 14px; font-size: 12px; color: #6b7280; }
+    .ldot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; vertical-align: middle; }
+
+    /* CARDS */
+    .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); gap: 11px; }
+    .c-card {
+      background: white; border-radius: 10px; padding: 13px;
+      border: 1.5px solid #e5e7eb; cursor: pointer; transition: all 0.15s;
+    }
+    .c-card:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.1); transform: translateY(-2px); }
+    .c-card.danger  { border-color: #fecaca; }
+    .c-card.warning { border-color: #fde68a; }
+    .c-card.good    { border-color: #a7f3d0; }
+    .c-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px; }
+    .c-id { font-size: 10px; color: #9ca3af; }
+    .sig { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .sig.danger  { background: #ef4444; }
+    .sig.warning { background: #f59e0b; }
+    .sig.good    { background: #10b981; }
+    .c-cat { font-size: 10px; color: #9ca3af; margin-bottom: 4px; }
+    .c-name {
+      font-size: 13px; font-weight: 600; color: #1f2937; margin-bottom: 10px; line-height: 1.4;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .c-val { font-size: 26px; font-weight: 700; line-height: 1; }
+    .c-val .unit { font-size: 13px; font-weight: 400; }
+    .c-val.danger  { color: #ef4444; }
+    .c-val.warning { color: #f59e0b; }
+    .c-val.good    { color: #10b981; }
+    .no-results { text-align: center; padding: 60px 20px; color: #9ca3af; grid-column: 1 / -1; font-size: 14px; }
+
+    .signal-rules { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 16px 14px; margin-bottom: 14px; }
+    .signal-rules-title { font-size: 12px; font-weight: 700; color: #1e293b; margin: 0 0 8px; letter-spacing: 0.02em; }
+    .signal-rules-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media (max-width: 700px) { .signal-rules-cols { grid-template-columns: 1fr; } }
+    .rule-block { font-size: 11px; color: #475569; line-height: 1.45; }
+    .rule-h { font-weight: 600; color: #334155; margin-bottom: 5px; font-size: 11px; }
+    .rule-h .rule-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+    .rule-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin: 1px 0; }
+    .r-red { color: #b91c1c; font-weight: 600; }
+    .r-amber { color: #b45309; font-weight: 600; }
+    .r-grn { color: #047857; font-weight: 600; }
+
+    @keyframes crFadeIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .compound-overlay {
+      position: fixed; inset: 0; z-index: 300;
+      display: flex; align-items: center; justify-content: center;
+      padding: 16px; padding-top: max(16px, env(safe-area-inset-top));
+      background: rgba(15, 23, 42, 0.5);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      visibility: hidden; opacity: 0; pointer-events: none;
+      transition: opacity 0.2s;
+    }
+    .compound-overlay.open { visibility: visible; opacity: 1; pointer-events: auto; }
+    .compound-panel {
+      width: 100%; max-width: 28rem; max-height: min(88vh, 640px);
+      background: #fff; border-radius: 12px; overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+      display: flex; flex-direction: column;
+      animation: crFadeIn 0.2s ease-out forwards;
+    }
+    .compound-header {
+      position: relative; background: #fff1f1; padding: 20px 20px 16px; flex-shrink: 0; border-radius: 12px 12px 0 0;
+    }
+    .compound-close {
+      position: absolute; top: 10px; right: 10px; width: 32px; height: 32px; border: none; border-radius: 50%;
+      background: transparent; color: #9ca3af; font-size: 16px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .compound-close:hover { color: #4b5563; background: rgba(0,0,0,0.05); }
+    .compound-h1 { display: flex; align-items: flex-start; gap: 10px; }
+    .compound-dot { width: 12px; height: 12px; border-radius: 50%; background: #ef4444; flex-shrink: 0; margin-top: 3px; }
+    .compound-title { font-size: 16px; font-weight: 700; color: #991b1b; line-height: 1.35; margin: 0; }
+    .compound-sub { font-size: 14px; color: #dc2626; margin: 6px 0 0; line-height: 1.45; }
+    .compound-body { padding: 10px 12px 12px; overflow-y: auto; flex: 1; min-height: 0; background: #fff; }
+    .cr-item {
+      display: flex; justify-content: space-between; gap: 10px; align-items: flex-start;
+      padding: 12px; margin-bottom: 8px; border-radius: 8px;
+      border: 1px solid rgba(254, 202, 202, 0.9); background: #fff5f5; cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .cr-item:last-child { margin-bottom: 0; }
+    .cr-item:hover { background: #ffeded; border-color: #f87171; }
+    .cr-left { min-width: 0; flex: 1; }
+    .cr-id { font-size: 10px; color: #9ca3af; margin-bottom: 2px; }
+    .cr-name { font-size: 14px; font-weight: 700; color: #111827; line-height: 1.3; word-break: break-word; }
+    .cr-addr { font-size: 12px; color: #6b7280; margin-top: 3px; display: flex; align-items: flex-start; gap: 3px; }
+    .cr-metric { text-align: right; font-size: 14px; font-weight: 600; color: #dc2626; line-height: 1.35; }
+
+    /* MODAL */
+    .overlay {
+      position: fixed; top: 0; right: 0; bottom: 0; left: 0;
+      background: rgba(0,0,0,0.48); z-index: 200;
+      display: flex; align-items: center; justify-content: center;
+      visibility: hidden; opacity: 0; pointer-events: none;
+    }
+    .overlay.open { visibility: visible; opacity: 1; pointer-events: auto; }
+    .modal {
+      background: white; border-radius: 16px;
+      width: 480px; max-width: 92vw; max-height: 88vh;
+      overflow-y: auto; padding: 26px; position: relative; flex-shrink: 0;
+    }
+    .modal-close {
+      position: absolute; top: 14px; right: 14px;
+      background: #f3f4f6; border: none; width: 30px; height: 30px;
+      border-radius: 50%; cursor: pointer; font-size: 15px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .modal-tags { display: flex; gap: 7px; margin-bottom: 10px; flex-wrap: wrap; }
+    .mtag { background: #f3f4f6; border-radius: 20px; padding: 3px 11px; font-size: 12px; color: #6b7280; }
+    .modal-name { font-size: 21px; font-weight: 700; margin-bottom: 18px; line-height: 1.3; }
+    .modal-toggle { display: flex; background: #f3f4f6; border-radius: 8px; padding: 3px; margin-bottom: 14px; gap: 2px; }
+    .mtog-btn { background: transparent; border: none; padding: 6px 20px; border-radius: 6px; font-size: 13px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+    .mtog-btn.active { background: #0e9f6e; color: white; font-weight: 700; }
+    .modal-info {
+      background: #f8f9fb; border-radius: 8px; padding: 11px 15px; margin-bottom: 14px;
+      font-size: 13px; color: #374151; display: flex; justify-content: space-between; align-items: center;
+    }
+    .modal-info-lbl { color: #6b7280; }
+    .mmetric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+    .mmetric { border-radius: 10px; padding: 13px; text-align: center; }
+    .mmetric.bg-good    { background: #f0fdf4; }
+    .mmetric.bg-warning { background: #fffbeb; }
+    .mmetric.bg-danger  { background: #fef2f2; }
+    .mmetric.bg-neutral { background: #f8f9fb; }
+    .mm-lbl { font-size: 11px; color: #6b7280; margin-bottom: 5px; }
+    .mm-val { font-size: 24px; font-weight: 700; }
+    .mm-val .u { font-size: 13px; font-weight: 400; margin-left: 1px; }
+    .mm-val.good    { color: #10b981; }
+    .mm-val.warning { color: #f59e0b; }
+    .mm-val.danger  { color: #ef4444; }
+    .mm-val.green   { color: #0e9f6e; }
+    .mm-val.gray    { color: #374151; }
+  </style>
+</head>
+<body>
+
+<!-- DROP ZONE -->
+<div id="drop-zone">
+  <div class="drop-icon">📦</div>
+  <div class="drop-title">自社データを読み込む</div>
+  <div class="drop-sub">商品データのExcelをここにドロップすると<br>信号機ダッシュボードが自動で表示されます</div>
+  <button class="drop-btn" onclick="document.getElementById('file-input').click()">📂 Excelファイルを選択する</button>
+  <button class="back-btn" onclick="backToDemo()">← サンプルデモに戻る</button>
+  <div class="drop-hint">
+    <div class="drop-hint-title">Excelに必要な列（太字は必須）</div>
+    <div class="tag-list">
+      <span class="col-tag req">商品名</span>
+      <span class="col-tag req">売上(万円/月)</span>
+      <span class="col-tag req">目標(万円/月)</span>
+      <span class="col-tag req">達成率(%)</span>
+      <span class="col-tag req">粗利率(%)</span>
+      <span class="col-tag">カテゴリ</span>
+      <span class="col-tag">担当部門</span>
+      <span class="col-tag">前年比(%)</span>
+      <span class="col-tag">販売開始</span>
+    </div>
+  </div>
+  <input type="file" id="file-input" accept=".xlsx,.xls" onchange="handleFile(event)">
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard">
+  <div class="header">
+    <div class="header-left">
+      <span class="header-icon">📦</span>
+      <span class="header-title">ビジネスシグナル | 商品</span>
+      <span class="demo-badge" id="demo-label">SAMPLE</span>
+    </div>
+    <div class="header-right">
+      <div class="toggle-group">
+        <button class="tog-btn active" onclick="setMetric('achievement')" id="btn-ach">達成率</button>
+        <button class="tog-btn" onclick="setMetric('profit')" id="btn-prf">粗利率</button>
+      </div>
+      <button class="risk-btn" onclick="toggleComposite()" id="btn-comp">
+        <span style="color:#f87171">●</span> 複合リスク
+      </button>
+      <div class="updated">最終更新<br><span id="updated-time"></span></div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="signal-rules" aria-label="信号の判定条件">
+      <p class="signal-rules-title">赤・黄・緑の条件（上部の「達成率 / 粗利率」切替で1つを選び、その色をカードに表示）</p>
+      <div class="signal-rules-cols">
+        <div class="rule-block">
+          <div class="rule-h"><span class="rule-dot" style="background:#ef4444"></span><span class="rule-dot" style="background:#f59e0b"></span><span class="rule-dot" style="background:#10b981"></span>達成率</div>
+          <div class="rule-row"><span class="r-red">危険(赤)：</span>未満 80%</div>
+          <div class="rule-row"><span class="r-amber">注意(黄)：</span>80% 以上 95% 未満</div>
+          <div class="rule-row"><span class="r-grn">順調(緑)：</span>95% 以上</div>
+        </div>
+        <div class="rule-block">
+          <div class="rule-h"><span class="rule-dot" style="background:#ef4444"></span><span class="rule-dot" style="background:#f59e0b"></span><span class="rule-dot" style="background:#10b981"></span>粗利率</div>
+          <div class="rule-row"><span class="r-red">危険(赤)：</span>未満 20%</div>
+          <div class="rule-row"><span class="r-amber">注意(黄)：</span>20% 以上 30% 未満</div>
+          <div class="rule-row"><span class="r-grn">順調(緑)：</span>30% 以上</div>
+        </div>
+      </div>
+      <p class="rule-row" style="margin-top:8px;font-size:10px;color:#94a3b8;">複合リスク：上記のうち「達成率が赤」かつ「粗利率が赤」に当てはまる商品</p>
+    </div>
+    <div class="search-wrap">
+      <input class="search-input" id="search" type="text"
+        placeholder="🔍 商品名・カテゴリ・担当部門で検索" oninput="renderCards()">
+    </div>
+    <div class="summary-row">
+      <div class="sum-card s-total active" onclick="setFilter('all')" id="sc-all">
+        <div class="sum-label">📦 全商品数</div>
+        <div><span class="sum-num c-total" id="cnt-all">0</span><span class="sum-unit">品</span></div>
+      </div>
+      <div class="sum-card s-danger" onclick="setFilter('danger')" id="sc-danger">
+        <div class="sum-label"><span style="color:#ef4444">●</span> 危険</div>
+        <div><span class="sum-num c-danger" id="cnt-danger">0</span><span class="sum-unit">品</span></div>
+      </div>
+      <div class="sum-card s-warn" onclick="setFilter('warning')" id="sc-warning">
+        <div class="sum-label"><span style="color:#f59e0b">●</span> 注意</div>
+        <div><span class="sum-num c-warn" id="cnt-warning">0</span><span class="sum-unit">品</span></div>
+      </div>
+      <div class="sum-card s-good" onclick="setFilter('good')" id="sc-good">
+        <div class="sum-label"><span style="color:#10b981">●</span> 順調</div>
+        <div><span class="sum-num c-good" id="cnt-good">0</span><span class="sum-unit">品</span></div>
+      </div>
+    </div>
+    <div class="section-header">
+      <span class="section-title" id="sec-title">全商品の一覧</span>
+      <div class="legend">
+        <span><span class="ldot" style="background:#ef4444"></span>危険</span>
+        <span><span class="ldot" style="background:#f59e0b"></span>注意</span>
+        <span><span class="ldot" style="background:#10b981"></span>順調</span>
+      </div>
+    </div>
+    <div class="card-grid" id="card-grid"></div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="overlay" id="overlay" onclick="maybeClose(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-tags" id="m-tags"></div>
+    <div class="modal-name" id="m-name"></div>
+    <div class="modal-toggle">
+      <button class="mtog-btn active" onclick="setMTab('achievement')" id="mb-ach">達成率</button>
+      <button class="mtog-btn" onclick="setMTab('profit')" id="mb-prf">粗利率</button>
+    </div>
+    <div class="modal-info" id="m-info"></div>
+    <div class="mmetric-grid" id="m-metrics"></div>
+  </div>
+</div>
+
+<div class="compound-overlay" id="compound-overlay" onclick="maybeCloseCompound(event)">
+  <div class="compound-panel" onclick="event.stopPropagation()">
+    <div class="compound-header">
+      <button type="button" class="compound-close" onclick="closeCompoundModal()" aria-label="閉じる">✕</button>
+      <div class="compound-h1">
+        <span class="compound-dot" aria-hidden="true"></span>
+        <div>
+          <h2 class="compound-title" id="compound-h1">複合リスク</h2>
+          <p class="compound-sub" id="compound-sub"></p>
+        </div>
+      </div>
+    </div>
+    <div class="compound-body" id="compound-list"></div>
+  </div>
+</div>
+
+<script>
+  function __esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function buildCompoundListProduct(list) {
+    document.getElementById('compound-h1').textContent = '達成率・粗利率 両方赤の商品';
+    document.getElementById('compound-sub').textContent = '達成率が危険（80%未満）かつ 粗利率が危険（20%未満）';
+    const el = document.getElementById('compound-list');
+    if (!el) return;
+    if (!list.length) {
+      el.innerHTML = '<p style="text-align:center;color:#9ca3af;padding:2.5rem 0;font-size:14px;">該当する商品はありません。</p>';
+      return;
+    }
+    el.innerHTML = list.map(p => `
+      <div class="cr-item" role="button" onclick="openFromComposite(${p.id})">
+        <div class="cr-left">
+          <div class="cr-id">No.${p.id}</div>
+          <div class="cr-name">${__esc(p.name)}</div>
+          <div class="cr-addr"><span aria-hidden="true">・</span>${__esc(p.category || '')} · ${__esc(p.dept || '')}</div>
+        </div>
+        <div>
+          <div class="cr-metric">達成率 ${p.achievement.toFixed(1)}%</div>
+          <div class="cr-metric">粗利率 ${p.profit.toFixed(1)}%</div>
+        </div>
+      </div>`).join('');
+  }
+  function closeCompoundModal() {
+    const o = document.getElementById('compound-overlay');
+    if (o) o.classList.remove('open');
+    composite = false;
+    const b = document.getElementById('btn-comp');
+    if (b) b.classList.remove('active');
+    renderCards();
+  }
+  function maybeCloseCompound(e) { if (e.target === document.getElementById('compound-overlay')) closeCompoundModal(); }
+  function openFromComposite(id) {
+    const o = document.getElementById('compound-overlay');
+    if (o) o.classList.remove('open');
+    composite = false;
+    const b = document.getElementById('btn-comp');
+    if (b) b.classList.remove('active');
+    syncSummaryActive();
+    openModal(id);
+    renderCards();
+  }
+
+  const SAMPLE_DATA = [
+    { id:1,  name:'プレミアムサポートプラン',     category:'サポート',       dept:'第1営業部', sales:450,  target:500,  achievement:90.0,  profit:52.3, yoy:95.1,  since:'2023/04/01' },
+    { id:2,  name:'クラウド管理ツール',           category:'ITサービス',     dept:'第2営業部', sales:820,  target:800,  achievement:102.5, profit:38.7, yoy:115.2, since:'2022/07/01' },
+    { id:3,  name:'スタンダードメンテナンス',     category:'メンテナンス',   dept:'第1営業部', sales:180,  target:260,  achievement:69.2,  profit:28.4, yoy:78.6,  since:'2021/01/01' },
+    { id:4,  name:'業務効率化コンサルA',         category:'コンサルティング',dept:'第3営業部', sales:650,  target:680,  achievement:95.6,  profit:61.2, yoy:103.4, since:'2023/01/01' },
+    { id:5,  name:'データ分析レポート',           category:'ITサービス',     dept:'第2営業部', sales:390,  target:400,  achievement:97.5,  profit:44.8, yoy:108.9, since:'2023/06/01' },
+    { id:6,  name:'エントリーライセンス',         category:'ライセンス',     dept:'第1営業部', sales:95,   target:180,  achievement:52.8,  profit:72.1, yoy:67.3,  since:'2024/01/01' },
+    { id:7,  name:'エンタープライズパッケージ',   category:'ライセンス',     dept:'第3営業部', sales:1250, target:1200, achievement:104.2, profit:55.6, yoy:118.7, since:'2022/04/01' },
+    { id:8,  name:'オンサイト研修プログラム',     category:'研修・教育',     dept:'第2営業部', sales:320,  target:350,  achievement:91.4,  profit:48.3, yoy:96.2,  since:'2023/04/01' },
+    { id:9,  name:'セキュリティ診断サービス',     category:'ITサービス',     dept:'第3営業部', sales:580,  target:560,  achievement:103.6, profit:41.5, yoy:112.1, since:'2023/09/01' },
+    { id:10, name:'レガシーシステム保守',         category:'メンテナンス',   dept:'第1営業部', sales:110,  target:210,  achievement:52.4,  profit:18.9, yoy:62.5,  since:'2019/04/01' },
+    { id:11, name:'マーケティング支援パック',     category:'コンサルティング',dept:'第2営業部', sales:470,  target:480,  achievement:97.9,  profit:57.4, yoy:104.8, since:'2023/07/01' },
+    { id:12, name:'ヘルプデスク代行',             category:'サポート',       dept:'第1営業部', sales:290,  target:300,  achievement:96.7,  profit:34.2, yoy:99.1,  since:'2022/10/01' },
+    { id:13, name:'ストレージ拡張オプション',     category:'ITサービス',     dept:'第2営業部', sales:420,  target:500,  achievement:84.0,  profit:17.8, yoy:88.3,  since:'2022/01/01' },
+    { id:14, name:'AIチャットボット導入',         category:'ITサービス',     dept:'第3営業部', sales:980,  target:900,  achievement:108.9, profit:49.3, yoy:134.5, since:'2024/04/01' },
+    { id:15, name:'紙帳票電子化サービス',         category:'ITサービス',     dept:'第1営業部', sales:145,  target:220,  achievement:65.9,  profit:22.6, yoy:73.8,  since:'2021/07/01' },
+    { id:16, name:'ERPカスタマイズ支援',         category:'コンサルティング',dept:'第3営業部', sales:760,  target:750,  achievement:101.3, profit:43.7, yoy:107.2, since:'2023/01/01' },
+    { id:17, name:'クラウドバックアップ',         category:'ITサービス',     dept:'第2営業部', sales:510,  target:520,  achievement:98.1,  profit:36.9, yoy:101.5, since:'2022/04/01' },
+    { id:18, name:'デジタル人材育成研修',         category:'研修・教育',     dept:'第2営業部', sales:360,  target:420,  achievement:85.7,  profit:51.8, yoy:92.4,  since:'2023/10/01' },
+    { id:19, name:'ネットワーク監視サービス',     category:'メンテナンス',   dept:'第1営業部', sales:240,  target:340,  achievement:70.6,  profit:15.4, yoy:76.9,  since:'2020/07/01' },
+    { id:20, name:'DX推進コンサルB',             category:'コンサルティング',dept:'第3営業部', sales:890,  target:850,  achievement:104.7, profit:63.5, yoy:121.8, since:'2024/01/01' },
+  ];
+
+  let products = [], isDemo = true, metric = 'achievement', filter = 'all', composite = false;
+  let modalProduct = null, mTab = 'achievement';
+
+  window.addEventListener('DOMContentLoaded', () => loadData(SAMPLE_DATA, true));
+
+  function loadData(data, demo) {
+    products = data; isDemo = demo;
+    document.getElementById('demo-label').style.display = demo ? 'inline' : 'none';
+    document.getElementById('updated-time').textContent =
+      new Date().toLocaleString('ja-JP', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+    filter = 'all'; composite = false;
+    const co = document.getElementById('compound-overlay');
+    if (co) co.classList.remove('open');
+    const bc = document.getElementById('btn-comp');
+    if (bc) bc.classList.remove('active');
+    document.getElementById('search').value = '';
+    syncSummaryActive(); renderAll();
+  }
+
+  function sig(val, m) {
+    if (m === 'achievement') return val >= 95 ? 'good' : val >= 80 ? 'warning' : 'danger';
+    return val >= 30 ? 'good' : val >= 20 ? 'warning' : 'danger';
+  }
+
+  const dz = document.getElementById('drop-zone');
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+  dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); if (e.dataTransfer.files[0]) processFile(e.dataTransfer.files[0]); });
+
+  function handleFile(e) { if (e.target.files[0]) processFile(e.target.files[0]); }
+  function processFile(file) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const wb = XLSX.read(e.target.result, { type: 'array' });
+      const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]).map((r, i) => ({
+        id: i + 1,
+        name:        r['商品名']         || `商品${i+1}`,
+        category:    r['カテゴリ']       || '',
+        dept:        r['担当部門']       || '',
+        sales:       +r['売上(万円/月)'] || 0,
+        target:      +r['目標(万円/月)'] || 0,
+        achievement: +r['達成率(%)']     || 0,
+        profit:      +r['粗利率(%)']     || 0,
+        yoy:         +r['前年比(%)']     || 0,
+        since:       r['販売開始']       || '—',
+      }));
+      dz.style.display = 'none';
+      document.getElementById('dashboard').style.display = 'block';
+      loadData(data, false);
+    };
+    reader.readAsArrayBuffer(file);
+  }
+  function backToDemo() { dz.style.display = 'none'; document.getElementById('dashboard').style.display = 'block'; loadData(SAMPLE_DATA, true); }
+
+  function renderAll() { updateSummary(); renderCards(); }
+  function metricVal(p) { return metric === 'achievement' ? p.achievement : p.profit; }
+
+  function updateSummary() {
+    const c = { danger:0, warning:0, good:0 };
+    products.forEach(p => c[sig(metricVal(p), metric)]++);
+    document.getElementById('cnt-all').textContent     = products.length;
+    document.getElementById('cnt-danger').textContent  = c.danger;
+    document.getElementById('cnt-warning').textContent = c.warning;
+    document.getElementById('cnt-good').textContent    = c.good;
+  }
+
+  function renderCards() {
+    const q = document.getElementById('search').value.toLowerCase();
+    let list = products.filter(p => !q || p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q) || p.dept.toLowerCase().includes(q));
+    if (composite) {
+      list = list.filter(p => sig(p.achievement,'achievement') === 'danger' && sig(p.profit,'profit') === 'danger');
+      document.getElementById('sec-title').textContent = `達成率・粗利率 両方赤（${list.length}品）`;
+      buildCompoundListProduct(list);
+      const co = document.getElementById('compound-overlay');
+      if (co) co.classList.add('open');
+      const grid = document.getElementById('card-grid');
+      grid.innerHTML = '<div class="no-results">一覧はポップアップで表示しています。</div>';
+      return;
+    }
+    const co0 = document.getElementById('compound-overlay');
+    if (co0) co0.classList.remove('open');
+    if (filter !== 'all') {
+      list = list.filter(p => sig(metricVal(p), metric) === filter);
+    }
+    const titles = {
+      all: `全商品の一覧（${list.length}品）`,
+      danger: `⚠️ 危険 — 今すぐ対応が必要（${list.length}品）`,
+      warning: `注意 — フォローが必要（${list.length}品）`,
+      good: `順調（${list.length}品）`,
+    };
+    document.getElementById('sec-title').textContent = titles[filter];
+    const grid = document.getElementById('card-grid');
+    if (!list.length) { grid.innerHTML = '<div class="no-results">該当する商品がありません</div>'; return; }
+    grid.innerHTML = list.map(p => {
+      const v = metricVal(p), s = sig(v, metric);
+      return `<div class="c-card ${s}" onclick="openModal(${p.id})">
+        <div class="c-top"><span class="c-id">No.${p.id}</span><span class="sig ${s}"></span></div>
+        <div class="c-cat">${p.category}</div>
+        <div class="c-name">${p.name}</div>
+        <div class="c-val ${s}">${v.toFixed(1)}<span class="unit">%</span></div>
+      </div>`;
+    }).join('');
+  }
+
+  function setMetric(m) {
+    metric = m;
+    document.getElementById('btn-ach').classList.toggle('active', m === 'achievement');
+    document.getElementById('btn-prf').classList.toggle('active', m === 'profit');
+    composite = false; document.getElementById('btn-comp').classList.remove('active');
+    renderAll();
+  }
+  function toggleComposite() {
+    composite = !composite;
+    document.getElementById('btn-comp').classList.toggle('active', composite);
+    if (!composite) {
+      const co = document.getElementById('compound-overlay');
+      if (co) co.classList.remove('open');
+    }
+    filter = 'all'; syncSummaryActive(); renderCards();
+  }
+  function setFilter(f) {
+    filter = f; composite = false;
+    document.getElementById('btn-comp').classList.remove('active');
+    syncSummaryActive(); renderCards();
+  }
+  function syncSummaryActive() {
+    ['all','danger','warning','good'].forEach(f =>
+      document.getElementById(`sc-${f}`).classList.toggle('active', f === filter && !composite));
+  }
+
+  function openModal(id) {
+    modalProduct = products.find(p => p.id === id);
+    if (!modalProduct) return;
+    mTab = 'achievement'; renderModal();
+    document.getElementById('overlay').classList.add('open');
+  }
+  function renderModal() {
+    const p = modalProduct;
+    document.getElementById('m-tags').innerHTML =
+      `<span class="mtag">No.${p.id}</span>` +
+      (p.category ? `<span class="mtag">${p.category}</span>` : '') +
+      (p.dept ? `<span class="mtag">${p.dept}</span>` : '');
+    document.getElementById('m-name').textContent = p.name;
+    document.getElementById('mb-ach').classList.toggle('active', mTab === 'achievement');
+    document.getElementById('mb-prf').classList.toggle('active', mTab === 'profit');
+    document.getElementById('m-info').innerHTML =
+      `<span class="modal-info-lbl">販売開始</span><span>${p.since}</span>`;
+    if (mTab === 'achievement') {
+      const s = sig(p.achievement, 'achievement'), ys = p.yoy >= 100 ? 'good' : p.yoy >= 90 ? 'warning' : 'danger';
+      document.getElementById('m-metrics').innerHTML = `
+        <div class="mmetric bg-${s}"><div class="mm-lbl">達成率</div><div class="mm-val ${s}">${p.achievement.toFixed(1)}<span class="u">%</span></div></div>
+        <div class="mmetric bg-neutral"><div class="mm-lbl">前年比</div><div class="mm-val ${ys}">${p.yoy.toFixed(1)}<span class="u">%</span></div></div>
+        <div class="mmetric bg-neutral"><div class="mm-lbl">売上（今月）</div><div class="mm-val green">${p.sales.toLocaleString()}<span class="u"> 万円</span></div></div>
+        <div class="mmetric bg-neutral"><div class="mm-lbl">目標</div><div class="mm-val gray">${p.target.toLocaleString()}<span class="u"> 万円</span></div></div>`;
+    } else {
+      const s = sig(p.profit, 'profit'), gross = Math.round(p.sales * p.profit / 100);
+      document.getElementById('m-metrics').innerHTML = `
+        <div class="mmetric bg-${s}"><div class="mm-lbl">粗利率</div><div class="mm-val ${s}">${p.profit.toFixed(1)}<span class="u">%</span></div></div>
+        <div class="mmetric bg-neutral"><div class="mm-lbl">粗利額（推計）</div><div class="mm-val green">${gross.toLocaleString()}<span class="u"> 万円</span></div></div>
+        <div class="mmetric bg-neutral"><div class="mm-lbl">売上（今月）</div><div class="mm-val green">${p.sales.toLocaleString()}<span class="u"> 万円</span></div></div>
+        <div class="mmetric bg-neutral"><div class="mm-lbl">目標</div><div class="mm-val gray">${p.target.toLocaleString()}<span class="u"> 万円</span></div></div>`;
+    }
+  }
+  function setMTab(t) { mTab = t; renderModal(); }
+  function maybeClose(e) { if (e.target === document.getElementById('overlay')) closeModal(); }
+  function closeModal() { document.getElementById('overlay').classList.remove('open'); }
+</script>
+</body>
+</html>
