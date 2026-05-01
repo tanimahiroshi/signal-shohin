@@ -75,8 +75,8 @@
     .updated { font-size: 10px; opacity: 0.65; text-align: right; line-height: 1.5; }
 
     /* MAIN */
-    .main { padding: 18px 24px; max-width: 1440px; margin: 0 auto; }
-    .search-wrap { margin-bottom: 14px; }
+    .main { padding: 24px 28px; max-width: 1440px; margin: 0 auto; }
+    .search-wrap { margin-bottom: 16px; }
     .search-input {
       background: white; border: 1.5px solid #e5e7eb; border-radius: 8px;
       padding: 9px 14px; font-size: 14px; width: 280px; outline: none; transition: border-color 0.15s;
@@ -84,9 +84,9 @@
     .search-input:focus { border-color: #0e9f6e; }
 
     /* SUMMARY */
-    .summary-row { display: grid; grid-template-columns: 1.2fr 1fr 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+    .summary-row { display: grid; grid-template-columns: 1.2fr 1fr 1fr 1fr; gap: 14px; margin-bottom: 22px; }
     .sum-card {
-      background: white; border-radius: 10px; padding: 15px 18px;
+      background: white; border-radius: 12px; padding: 18px 20px;
       border: 1.5px solid #e5e7eb; cursor: pointer; transition: all 0.15s;
     }
     .sum-card:hover { box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
@@ -104,15 +104,15 @@
     .sum-unit { font-size: 13px; font-weight: 400; color: #9ca3af; margin-left: 3px; }
 
     /* SECTION */
-    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
     .section-title { font-size: 14px; font-weight: 600; color: #374151; }
     .legend { display: flex; gap: 14px; font-size: 12px; color: #6b7280; }
     .ldot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; vertical-align: middle; }
 
     /* CARDS */
-    .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); gap: 11px; }
+    .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: 13px; }
     .c-card {
-      background: white; border-radius: 10px; padding: 13px;
+      background: white; border-radius: 12px; padding: 16px;
       border: 1.5px solid #e5e7eb; cursor: pointer; transition: all 0.15s;
     }
     .c-card:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.1); transform: translateY(-2px); }
@@ -274,8 +274,8 @@
   
     .criteria-bar {
       display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-      background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
-      padding: 8px 14px; font-size: 13px; color: #475569; margin-bottom: 14px;
+      background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;
+      padding: 10px 16px; font-size: 13px; color: #475569; margin-bottom: 18px;
     }
     .criteria-label { font-weight: 700; color: #1e293b; white-space: nowrap; }
     .criteria-sep { color: #94a3b8; }
@@ -332,8 +332,6 @@
   </div>
 
   <div class="main">
-          
-    </div>
     <div class="search-wrap">
       <input class="search-input" id="search" type="text"
         placeholder="🔍 商品名・カテゴリ・担当部門で検索" oninput="renderCards()">
@@ -576,7 +574,7 @@
   }
 
   
-  const CRITERIA = {"achievement":"<span class=\"c-red\">● 赤: 80%未満</span>　<span class=\"c-amber\">● 黄: 80〜94%</span>　<span class=\"c-grn\">● 緑: 95%以上</span><span class=\"c-div\">|</span>達成率","profit":"<span class=\"c-red\">● 赤: 20%未満</span>　<span class=\"c-amber\">● 黄: 20〜29%</span>　<span class=\"c-grn\">● 緑: 30%以上</span><span class=\"c-div\">|</span>粗利率"};
+  const CRITERIA = {"achievement":"<span class=\"c-red\">● 赤: 80%未満</span>　<span class=\"c-amber\">● 黄: 80〜94%</span>　<span class=\"c-grn\">● 緑: 95%以上</span>","profit":"<span class=\"c-red\">● 赤: 20%未満</span>　<span class=\"c-amber\">● 黄: 20〜29%</span>　<span class=\"c-grn\">● 緑: 30%以上</span>"};
   function updateCriteria(m) {
     const el = document.getElementById('criteria-content');
     if (el && CRITERIA[m]) el.innerHTML = CRITERIA[m];
